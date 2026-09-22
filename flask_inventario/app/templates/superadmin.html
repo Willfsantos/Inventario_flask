@@ -1,0 +1,95 @@
+<!-- templates/superadmin.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+    
+    <!-- Formulário: Criar Empresa -->
+    <div style="flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3>Cadastrar Nova Empresa</h3>
+        <form onsubmit="cadastrarEmpresa(event)">
+            <label style="display:block; margin-bottom: 5px;">Nome da Empresa:</label>
+            <input type="text" id="nomeEmpresa" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+            <button type="submit" style="width: 100%; padding: 10px; background-color: #27ae60; color: white; border: none; cursor: pointer;">Criar Empresa</button>
+        </form>
+    </div>
+
+    <!-- Formulário: Criar Admin -->
+    <div style="flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3>Cadastrar Administrador</h3>
+        <form onsubmit="cadastrarAdmin(event)">
+            <label style="display:block; margin-bottom: 5px;">Vincular à Empresa:</label>
+            <select id="empresaSelect" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+                <option value="">Carregando empresas...</option>
+            </select>
+
+            <label style="display:block; margin-bottom: 5px;">Usuário:</label>
+            <input type="text" id="adminUser" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+
+            <label style="display:block; margin-bottom: 5px;">Senha:</label>
+            <input type="password" id="adminPass" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+
+            <button type="submit" style="width: 100%; padding: 10px; background-color: #2980b9; color: white; border: none; cursor: pointer;">Criar Admin</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', carregarEmpresas);
+
+    async function carregarEmpresas() {
+        const response = await fetch('/api/empresas');
+        if (response.ok) {
+            const empresas = await response.json();
+            const select = document.getElementById('empresaSelect');
+            select.innerHTML = '<option value="">Selecione uma empresa</option>';
+            empresas.forEach(emp => {
+                select.innerHTML += `<option value="${emp.id}">${emp.nome}</option>`;
+            });
+        }
+    }
+
+    async function cadastrarEmpresa(event) {
+        event.preventDefault();
+        const nome = document.getElementById('nomeEmpresa').value;
+
+        const response = await fetch('/superadmin/empresa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: nome })
+        });
+        
+        const data = await response.json();
+        alert(data.msg || data.erro);
+        if (response.ok) {
+            document.getElementById('nomeEmpresa').value = '';
+            carregarEmpresas(); // Atualiza o select do form ao lado
+        }
+    }
+
+    async function cadastrarAdmin(event) {
+        event.preventDefault();
+        
+        const dados = {
+            username: document.getElementById('adminUser').value,
+            password: document.getElementById('adminPass').value,
+            role: 'admin',
+            empresa_id: document.getElementById('empresaSelect').value
+        };
+
+        // Reaproveitamos a rota de registro existente
+        const response = await fetch('/registro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        
+        const data = await response.json();
+        alert(data.msg || data.erro);
+        if (response.ok) {
+            document.getElementById('adminUser').value = '';
+            document.getElementById('adminPass').value = '';
+        }
+    }
+</script>
+{% endblock %}

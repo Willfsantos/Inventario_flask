@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Coluna do Formulário (Esquerda) -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Novo Colaborador</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nome do Funcionário *</label>
+                    <input type="text" id="nomeFuncionario" class="form-control" placeholder="Ex: João Silva">
+                </div>
+                
+                <!-- Gera os inputs dinâmicos -->
+                {% for campo in schema %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ campo.nome_campo }}</label>
+                        <input type="{{ campo.tipo }}" id="dinamico_{{ campo.nome_campo }}" class="form-control" placeholder="Preencha {{ campo.nome_campo }}">
+                    </div>
+                {% endfor %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Senha de Acesso (Login) *</label>
+                    <input type="password" id="senhaAcesso" class="form-control" placeholder="Ex: mudar@123">
+                    <small class="text-muted" style="font-size: 0.8em;">O login será o E-mail preenchido nos campos acima.</small>
+                </div>
+                
+                <button onclick="cadastrarFuncionario()" class="btn btn-success w-100 fw-bold">Cadastrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna da Tabela (Direita) -->
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-dark">Equipe Cadastrada</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-3">ID</th>
+                                <th>Nome</th>
+                                {% for campo in schema %}
+                                    <th>{{ campo.nome_campo }}</th>
+                                {% endfor %}
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for func in funcionarios %}
+                            <tr>
+                                <td class="ps-3 fw-bold">{{ func.id }}</td>
+                                <td>{{ func.nome }}</td>
+                                {% for campo in schema %}
+                                    <td>{{ func.dados.get(campo.nome_campo, '') if func.dados else '' }}</td>
+                                {% endfor %}
+                                <td class="text-center">
+                                    <!-- Adicione este botão na coluna de Ações da sua tabela -->
+                                    <button onclick="promoverAdmin({{ func.id }})" class="btn btn-sm btn-success me-1" title="Tornar Admin">
+                                        ⬆️ Promover
+                                    </button>
+                                    <button onclick="abrirModalEditar({{ func.id }})" class="btn btn-sm btn-outline-primary me-1">Editar</button>
+                                    <button onclick="deletarFuncionario({{ func.id }})" class="btn btn-sm btn-outline-danger">Excluir</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="100%" class="text-center py-4 text-muted">
+                                    Nenhum funcionário cadastrado no momento.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição -->
+<div class="modal fade" id="editarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">Editar Colaborador</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nome do Funcionário *</label>
+                    <input type="text" id="editNome" class="form-control">
+                </div>
+                
+                <!-- Gera os inputs dinâmicos no modal -->
+                {% for campo in schema %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ campo.nome_campo }}</label>
+                        <input type="{{ campo.tipo }}" id="edit_{{ campo.nome_campo }}" class="form-control">
+                    </div>
+                {% endfor %}
+                
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label text-primary fw-bold">Nova Senha de Acesso</label>
+                    <input type="password" id="editSenha" class="form-control" placeholder="Deixe em branco para não alterar">
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" onclick="salvarEdicao()" class="btn btn-primary fw-bold">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function cadastrarFuncionario() {
+        const nome = document.getElementById('nomeFuncionario').value;
+        const senha = document.getElementById('senhaAcesso').value; // Captura a senha
+
+        if (!nome) return alert('Digite o nome!');
+        if (!senha) return alert('Digite a senha de acesso!'); // Valida a senha
+
+        // Coloca a senha dentro do JSON que vai pro Python
+        const payload = { 
+            nome: nome,
+            senha_acesso: senha 
+        };
+        
+        {% for campo in schema %}
+            payload["{{ campo.nome_campo }}"] = document.getElementById('dinamico_{{ campo.nome_campo }}').value;
+        {% endfor %}
+
+        const res = await fetch('/funcionarios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        alert(data.msg);
+        if(res.ok) window.location.reload();
+    }
+    async function deletarFuncionario(id) {
+        if (!confirm("Tem certeza que deseja excluir este funcionário e remover seu acesso ao sistema?")) return;
+
+        const res = await fetch(`/funcionarios/deletar/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        alert(data.msg || data.erro);
+        if (res.ok) {
+            window.location.reload();
+        }
+    }
+    const editarModal = new bootstrap.Modal(document.getElementById('editarModal'));
+
+    async function abrirModalEditar(id) {
+        try {
+            const res = await fetch(`/funcionarios/editar/${id}`);
+            const data = await res.json();
+            
+            if(data.erro) {
+                alert(data.erro);
+                return;
+            }
+
+            // Preenche os campos fixos
+            document.getElementById('editId').value = id;
+            document.getElementById('editNome').value = data.nome;
+            document.getElementById('editSenha').value = ''; // Sempre limpo por segurança
+            
+            // Preenche os campos dinâmicos do schema
+            {% for campo in schema %}
+                document.getElementById('edit_{{ campo.nome_campo }}').value = data.dados["{{ campo.nome_campo }}"] || '';
+            {% endfor %}
+            
+            // NOVO: Busca o elemento do modal e abre de forma 100% segura
+            const modalElement = document.getElementById('editarModal');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modalInstance.show();
+
+        } catch (error) {
+            console.error(error);
+            alert("Erro de conexão ao tentar buscar os dados do colaborador.");
+        }
+    }
+
+    async function salvarEdicao() {
+        const id = document.getElementById('editId').value;
+        const nome = document.getElementById('editNome').value;
+        const senha = document.getElementById('editSenha').value;
+
+        if (!nome) return alert('O nome é obrigatório!');
+
+        const payload = { nome: nome };
+        if (senha) payload.senha_acesso = senha; // Só envia a senha se o admin digitou algo
+
+        // Captura os dados dinâmicos
+        {% for campo in schema %}
+            payload["{{ campo.nome_campo }}"] = document.getElementById('edit_{{ campo.nome_campo }}').value;
+        {% endfor %}
+
+        const res = await fetch(`/funcionarios/editar/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        alert(data.msg || data.erro);
+        if(res.ok) window.location.reload();
+    }
+    async function promoverAdmin(id) {
+        if (!confirm('Tem certeza que deseja dar permissões totais de Administrador para este funcionário? Ele terá acesso a todo o inventário.')) return;
+        
+        try {
+            const res = await fetch(`/funcionarios/promover/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await res.json();
+            
+            if (data.erro) {
+                alert(data.erro);
+            } else {
+                alert(data.msg);
+                window.location.reload(); // Recarrega para atualizar a tela
+            }
+        } catch (error) {
+            alert('Erro de comunicação com o servidor.');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0">Cadastrar Novo Item</h5>
+            </div>
+            <div class="card-body p-4">
+                {% if schema|length == 0 %}
+                    <div class="alert alert-warning" role="alert">
+                        O formulário ainda não foi configurado pelo Administrador.
+                    </div>
+                {% else %}
+                    <form id="formInventario" onsubmit="salvarItem(event)">
+
+                        <div class="mb-3 p-3 bg-light border rounded">
+                            <label class="form-label fw-bold">Status Atual:</label>
+                            <select id="status_equipamento" class="form-select border-primary" onchange="verificarStatus()">
+                                <!-- No arquivo editar_inventario.html, você pode colocar o if para marcar o selected como fez no funcionário -->
+                                <option value="Em Estoque">Em Estoque (Disponível)</option>
+                                <option value="Em Uso">Em Uso (Com Funcionário)</option>
+                                <option value="Em Manutenção">Em Manutenção / Assistência</option>
+                                <option value="Obsoleto/Sucata">Obsoleto / Sucata</option>
+                                <option value="Extraviado">Extraviado / Furtado</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Seleção de Funcionário -->
+                        <div class="mb-4 p-3 bg-light border rounded">
+                            <label class="form-label fw-bold">Atribuir a (Funcionário):</label>
+                            <select id="funcionario_id" class="form-select">
+                                <option value="">-- Manter em Estoque / Nenhum --</option>
+                                {% for func in funcionarios %}
+                                    <option value="{{ func.id }}">{{ func.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <h6 class="text-muted mb-3 border-bottom pb-2">Dados do Equipamento:</h6>
+                        
+                        <!-- Campos Dinâmicos -->
+                        {% for campo in schema %}
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ campo.nome_campo }}</label>
+                                <input type="{{ campo.tipo }}" id="campo_{{ campo.nome_campo }}" class="form-control" placeholder="Preencha o campo {{ campo.nome_campo }}" required>
+                            </div>
+                        {% endfor %}
+                        
+                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold mt-4">Salvar no Inventário</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function salvarItem(event) {
+        event.preventDefault();
+        
+        const payload = {};
+        
+        // Pega o ID do funcionário (se selecionado)
+        payload['funcionario_id'] = document.getElementById('funcionario_id').value;
+        
+        // Pega os dados dos campos dinâmicos
+        {% for campo in schema %}
+            payload["{{ campo.nome_campo }}"] = document.getElementById('campo_{{ campo.nome_campo }}').value;
+        {% endfor %}
+
+        const res = await fetch('/inventario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        alert(data.msg);
+        if(res.ok) window.location.href = '/inventario/listar';
+    }
+    const payload = {};
+        payload['status'] = document.getElementById('status_equipamento').value; // Adicione esta linha
+        payload['funcionario_id'] = document.getElementById('funcionario_id').value;
+
+    function verificarStatus() {
+        const status = document.getElementById('status_equipamento').value;
+        const selectFuncionario = document.getElementById('funcionario_id');
+        
+        if (status !== 'Em Uso') {
+            // Se quebrou ou foi pro estoque, limpa o funcionário e bloqueia o campo
+            selectFuncionario.value = ""; 
+            selectFuncionario.disabled = true; 
+        } else {
+            // Se marcou 'Em Uso', libera o campo para o admin escolher a pessoa
+            selectFuncionario.disabled = false; 
+        }
+    }
+
+    // Executa a verificação assim que a página carrega (útil na tela de Editar)
+    document.addEventListener("DOMContentLoaded", verificarStatus);
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+<!-- templates/equipe.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px;">
+    <h2>Cadastrar Membro da Equipe</h2>
+    
+    <form onsubmit="cadastrarMembro(event)">
+        <label style="display:block; margin-bottom: 5px;">Usuário:</label>
+        <input type="text" id="novoUser" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+
+        <label style="display:block; margin-bottom: 5px;">Senha:</label>
+        <input type="password" id="novaSenha" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+
+        <label style="display:block; margin-bottom: 5px;">Nível de Acesso:</label>
+        <select id="novoRole" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
+            <option value="colaborador">Colaborador (Apenas preenche e vê itens)</option>
+            <option value="admin">Administrador (Sub-admin: Edita form e cria usuários)</option>
+        </select>
+
+        <button type="submit" style="width: 100%; padding: 10px; background-color: #27ae60; color: white; border: none; cursor: pointer;">Criar Usuário</button>
+    </form>
+</div>
+
+<script>
+    async function cadastrarMembro(event) {
+        event.preventDefault();
+        
+        const dados = {
+            username: document.getElementById('novoUser').value,
+            password: document.getElementById('novaSenha').value,
+            role: document.getElementById('novoRole').value
+        };
+
+        const response = await fetch('/admin/equipe/criar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        
+        const data = await response.json();
+        alert(data.msg || data.erro);
+        
+        if (response.ok) {
+            document.getElementById('novoUser').value = '';
+            document.getElementById('novaSenha').value = '';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal SaaS - Inventário</title>
+    <!-- Importando o Bootstrap 5 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Menu Superior Moderno -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">📦 Sistema de Inventário</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                        
+                        {% if current_user.role in ['admin', 'superadmin'] %}
+                            <li class="nav-item"><a class="nav-link" href="/inventario">Novo Item</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/inventario/listar">Ver Inventário</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/funcionarios">Funcionários</a></li>
+                        {% endif %}
+                        
+                        {% if current_user.role == 'admin' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                    Configurações
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/admin/formulario">Formulário de Inventário</a></li>
+                                    <li><a class="dropdown-item" href="/admin/formulario_funcionario">Formulário de Funcionários</a></li>
+                                </ul>
+                            </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item"><span class="nav-link text-white">Olá, {{ current_user.username }}</span></li>
+                        <li class="nav-item"><a class="nav-link text-danger" href="/logout">Sair</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="/login">Entrar</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Container Central onde as outras páginas vão carregar -->
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Scripts do Bootstrap para o menu dropdown funcionar -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Editar Item #{{ item.id }}</h5>
+                <a href="/inventario/listar" class="btn btn-sm btn-light fw-bold text-primary">Voltar</a>
+            </div>
+            <div class="card-body p-4">
+                <form id="formEditarInventario" onsubmit="salvarEdicao(event)">
+
+                    <div class="mb-3 p-3 bg-light border rounded">
+                            <label class="form-label fw-bold">Status Atual:</label>
+                            <select name="status" id="status" class="form-select">
+                                <option value="Em Estoque" {% if item.status == 'Em Estoque' %}selected{% endif %}>Em Estoque</option>
+                                <option value="Em Uso" {% if item.status == 'Em Uso' %}selected{% endif %}>Em Uso</option>
+                                <option value="Em Manutenção" {% if item.status == 'Em Manutenção' %}selected{% endif %}>Em Manutenção</option>
+                                <option value="Obsoleto/Sucata" {% if item.status == 'Obsoleto/Sucata' %}selected{% endif %}>Obsoleto/Sucata</option>
+                                <option value="Extraviado" {% if item.status == 'Extraviado' %}selected{% endif %}>Extraviado</option>
+                            </select>
+                        </div>
+                    
+                    <!-- Seleção de Funcionário -->
+                    <div class="mb-4 p-3 bg-light border rounded">
+                        <label class="form-label fw-bold">Atribuir a (Funcionário):</label>
+                        <select id="funcionario_id" class="form-select">
+                            <option value="">-- Manter em Estoque / Nenhum --</option>
+                            {% for func in funcionarios %}
+                                <option value="{{ func.id }}" {% if item.funcionario_id == func.id %}selected{% endif %}>
+                                    {{ func.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <h6 class="text-muted mb-3 border-bottom pb-2">Dados do Equipamento:</h6>
+                    
+                    <!-- Campos Dinâmicos -->
+                    {% for campo in schema %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ campo.nome_campo }}</label>
+                            <input type="{{ campo.tipo }}" id="campo_{{ campo.nome_campo }}" class="form-control" value="{{ item.dados.get(campo.nome_campo, '') }}" required>
+                        </div>
+                    {% endfor %}
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mt-4">Salvar Alterações</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function salvarEdicao(event) {
+        event.preventDefault();
+        
+        const payload = {};
+        
+        // Pega o Status e o Funcionário corretamente pelos IDs do HTML
+        payload['status'] = document.getElementById('status').value;
+        payload['funcionario_id'] = document.getElementById('funcionario_id').value;
+        
+        // Pega todos os campos dinâmicos (Marca, Modelo, etc)
+        {% for campo in schema %}
+            payload["{{ campo.nome_campo }}"] = document.getElementById('campo_{{ campo.nome_campo }}').value;
+        {% endfor %}
+
+        try {
+            const res = await fetch('/inventario/editar/{{ item.id }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await res.json();
+            
+            if(res.ok) {
+                alert(data.msg);
+                window.location.href = '/inventario/listar';
+            } else {
+                alert(data.erro || 'Erro ao salvar as alterações.');
+            }
+        } catch (error) {
+            alert('Erro de comunicação com o servidor.');
+        }
+    }
+    const payload = {};
+        payload['status'] = document.getElementById('status_equipamento').value; // Adicione esta linha
+        payload['funcionario_id'] = document.getElementById('funcionario_id').value;
+
+    function verificarStatus() {
+        const status = document.getElementById('status_equipamento').value;
+        const selectFuncionario = document.getElementById('funcionario_id');
+        
+        if (status !== 'Em Uso') {
+            // Se quebrou ou foi pro estoque, limpa o funcionário e bloqueia o campo
+            selectFuncionario.value = ""; 
+            selectFuncionario.disabled = true; 
+        } else {
+            // Se marcou 'Em Uso', libera o campo para o admin escolher a pessoa
+            selectFuncionario.disabled = false; 
+        }
+    }
+
+    // Executa a verificação assim que a página carrega (útil na tela de Editar)
+    document.addEventListener("DOMContentLoaded", verificarStatus);
+</script>
+{% endblock %}

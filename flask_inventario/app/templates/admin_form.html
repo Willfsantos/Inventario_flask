@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Configurar Formulário de Inventário</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-4">
+                    <div class="col-md-5">
+                        <input type="text" id="nomeCampo" class="form-control" placeholder="Nome do Campo (ex: Marca, Serial)">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="tipoCampo" class="form-select">
+                            <option value="text">Texto</option>
+                            <option value="number">Número</option>
+                            <option value="date">Data</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button id="btnAdicionar" onclick="salvarOuAtualizarCampo()" class="btn btn-primary flex-grow-1">Adicionar</button>
+                        <button id="btnCancelar" onclick="cancelarEdicao()" class="btn btn-secondary d-none">X</button>
+                    </div>
+                </div>
+
+                <h6 class="text-muted mb-3">Campos Atuais:</h6>
+                <ul id="listaCampos" class="list-group mb-4"></ul>
+
+                <button onclick="salvarSchema()" class="btn btn-success w-100 fw-bold py-2">Salvar Estrutura do Formulário</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let schema = {{ schema | tojson | safe }} || [];
+    let indexEdicao = -1; // -1 significa que estamos criando um campo novo
+
+    function renderizarCampos() {
+        const lista = document.getElementById('listaCampos');
+        lista.innerHTML = '';
+        schema.forEach((campo, index) => {
+            lista.innerHTML += `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><strong>${campo.nome_campo}</strong> <span class="badge bg-secondary ms-2">Tipo: ${campo.tipo}</span></span>
+                <div>
+                    <button onclick="prepararEdicao(${index})" class="btn btn-sm btn-outline-warning me-1">Editar</button>
+                    <button onclick="removerCampo(${index})" class="btn btn-sm btn-outline-danger">Remover</button>
+                </div>
+            </li>`;
+        });
+    }
+
+    function salvarOuAtualizarCampo() {
+        const nome = document.getElementById('nomeCampo').value;
+        const tipo = document.getElementById('tipoCampo').value;
+        
+        if (!nome) return alert('Preencha o nome do campo!');
+
+        if (indexEdicao === -1) {
+            schema.push({ nome_campo: nome, tipo: tipo }); // Modo Adicionar
+        } else {
+            schema[indexEdicao] = { nome_campo: nome, tipo: tipo }; // Modo Atualizar
+            cancelarEdicao(); 
+        }
+        
+        document.getElementById('nomeCampo').value = '';
+        renderizarCampos();
+    }
+
+    function prepararEdicao(index) {
+        indexEdicao = index;
+        document.getElementById('nomeCampo').value = schema[index].nome_campo;
+        document.getElementById('tipoCampo').value = schema[index].tipo;
+        
+        // Muda o botão para "Atualizar" (Amarelo)
+        const btnAdd = document.getElementById('btnAdicionar');
+        btnAdd.innerText = 'Atualizar';
+        btnAdd.classList.replace('btn-primary', 'btn-warning');
+        
+        // Mostra o botão "X" de cancelar
+        document.getElementById('btnCancelar').classList.remove('d-none');
+    }
+
+    function cancelarEdicao() {
+        indexEdicao = -1;
+        document.getElementById('nomeCampo').value = '';
+        
+        // Volta o botão para "Adicionar" (Azul)
+        const btnAdd = document.getElementById('btnAdicionar');
+        btnAdd.innerText = 'Adicionar';
+        btnAdd.classList.replace('btn-warning', 'btn-primary');
+        
+        document.getElementById('btnCancelar').classList.add('d-none');
+    }
+
+    function removerCampo(index) {
+        schema.splice(index, 1);
+        // Se apagar o campo que estava sendo editado, cancela a edição
+        if (indexEdicao === index) cancelarEdicao(); 
+        renderizarCampos();
+    }
+
+    async function salvarSchema() {
+        // Envia para a URL correta dependendo de qual tela o admin está
+        const res = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(schema)
+        });
+        const data = await res.json();
+        alert(data.msg || data.erro);
+    }
+
+    renderizarCampos();
+</script>
+{% endblock %}

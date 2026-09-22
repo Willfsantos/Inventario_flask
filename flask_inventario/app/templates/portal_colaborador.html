@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="fw-bold text-dark mb-0">Olá, {{ funcionario.nome }}</h2>
+            <p class="text-muted mb-0">Aqui estão os equipamentos de propriedade da empresa atualmente sob sua responsabilidade.</p>
+        </div>
+    </div>
+
+    {% if erro %}
+        <div class="alert alert-danger">{{ erro }}</div>
+    {% elif itens|length == 0 %}
+        <div class="card p-5 text-center shadow-sm border-0">
+            <h5 class="text-muted mb-0">Nenhum equipamento vinculado ao seu perfil no momento.</h5>
+        </div>
+    {% else %}
+        <div class="row g-4">
+            {% for item in itens %}
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                            <span class="fw-bold">Equipamento #{{ item.id }}</span>
+                            <span class="badge bg-primary">Em seu uso</span>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush mb-3">
+                                {% for campo in schema %}
+                                    <li class="list-group-item d-flex justify-content-between px-0">
+                                        <strong class="text-muted">{{ campo.nome_campo }}:</strong>
+                                        <span class="fw-medium text-dark">{{ item.dados.get(campo.nome_campo, '-') }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="card-footer bg-white d-flex gap-2 border-0 pb-3">
+                            <a href="/inventario/termo/{{ item.id }}" target="_blank" class="btn btn-sm btn-outline-dark flex-grow-1 fw-bold">📄 Ver Termo de Responsabilidade</a>
+                            <button onclick="abrirModalReportar({{ item.id }})" class="btn btn-sm btn-warning">Reportar Problema</button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="problemaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">Relatar Problema no Equipamento #<span id="modalItemId"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descreva detalhadamente o que está acontecendo:</label>
+                    <textarea id="txtDescricao" class="form-control" rows="4" placeholder="Ex: O notebook liga mas a tela fica preta, ou o teclado parou de funcionar as teclas W e E..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" onclick="enviarProblema()" class="btn btn-danger fw-bold">Enviar para a TI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Reportar Problema -->
+<div class="modal fade" id="modalReportar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">Reportar Problema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reportItemId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descreva o defeito do equipamento:</label>
+                    <textarea id="reportDescricao" class="form-control" rows="4" placeholder="Ex: A tela está piscando e o teclado parou de funcionar..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" onclick="enviarReporte()" class="btn btn-warning fw-bold">Enviar Aviso</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirModalReportar(id) {
+        document.getElementById('reportItemId').value = id;
+        document.getElementById('reportDescricao').value = ''; // Limpa o campo
+        
+        const modalElement = document.getElementById('modalReportar');
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modalInstance.show();
+    }
+
+    async function enviarReporte() {
+        const id = document.getElementById('reportItemId').value;
+        const descricao = document.getElementById('reportDescricao').value;
+
+        if (!descricao.trim()) return alert('Por favor, descreva o problema antes de enviar.');
+
+        const res = await fetch(`/inventario/reportar/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descricao: descricao })
+        });
+
+        const data = await res.json();
+        
+        if (data.erro) {
+            alert(data.erro);
+        } else {
+            alert(data.msg);
+            window.location.reload();
+        }
+    }
+</script>
+{% endblock %}

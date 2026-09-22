@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="mb-4 text-dark border-bottom pb-2">Dashboard</h2>
+
+<!-- ALERTA DE EQUIPAMENTOS COM PROBLEMA -->
+{% if itens_alerta %}
+<div class="alert alert-danger shadow-sm mb-4 border-start border-danger border-5" role="alert">
+    <h5 class="alert-heading fw-bold text-danger">⚠️ Alerta de Manutenção!</h5>
+    <p class="mb-2">Os colaboradores reportaram problemas nos seguintes equipamentos. Verifique os logs para detalhes:</p>
+    <hr class="border-danger opacity-50">
+    <ul class="mb-0">
+        {% for item in itens_alerta %}
+            <li>
+                <strong>Item ID {{ item.id }}</strong> 
+                {% if item.funcionario_id %}
+                    (Dono Atual: Funcionário ID {{ item.funcionario_id }})
+                {% else %}
+                    (Sem dono vinculado)
+                {% endif %} - 
+                <a href="/inventario" class="alert-link text-decoration-none">Acessar Inventário para resolver</a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Seção de Cards -->
+<div class="row g-4 mb-5">
+    {% if current_user.role == 'superadmin' %}
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 text-center">
+                <div class="card-body py-5">
+                    <h5 class="text-muted text-uppercase mb-3">Total de Empresas (SaaS)</h5>
+                    <h1 class="display-4 fw-bold text-primary mb-0">{{ total_empresas }}</h1>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 text-center">
+                <div class="card-body py-5">
+                    <h5 class="text-muted text-uppercase mb-3">Itens no Inventário</h5>
+                    <h1 class="display-4 fw-bold text-primary mb-0">{{ total_itens }}</h1>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 text-center">
+                <div class="card-body py-5">
+                    <h5 class="text-muted text-uppercase mb-3">Membros na Equipe</h5>
+                    <h1 class="display-4 fw-bold text-success mb-0">{{ total_usuarios }}</h1>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Seção do Gráfico (Não exibe para Superadmin) -->
+{% if current_user.role != 'superadmin' %}
+<div class="row mb-5">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-dark">Status de Alocação de Equipamentos</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center p-4">
+                <div style="width: 100%; max-width: 350px;">
+                    <canvas id="graficoInventario"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Importação do Chart.js via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('graficoInventario').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Em Uso', 'Em Estoque', 'Manutenção', 'Sucata', 'Extraviado'],
+                datasets: [{
+                    // As variáveis do Python entram aqui:
+                    data: [
+                        {{ qtd_uso }}, 
+                        {{ qtd_estoque }}, 
+                        {{ qtd_manutencao }}, 
+                        {{ qtd_sucata }}, 
+                        {{ qtd_extraviado }}
+                    ],
+                    backgroundColor: [
+                        '#0d6efd', // Azul (Uso)
+                        '#198754', // Verde (Estoque)
+                        '#ffc107', // Amarelo (Manutenção)
+                        '#6c757d', // Cinza (Sucata)
+                        '#dc3545'  // Vermelho (Extraviado)
+                    ],
+                    borderWidth: 2,
+                    hoverOffset: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, font: { size: 13 } }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+
+{% endblock %}
